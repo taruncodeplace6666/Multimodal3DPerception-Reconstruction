@@ -1,0 +1,22 @@
+
+# Task 1 – LiDAR-to-Camera Projection  |  Configuration File
+
+
+#  Dataset Paths 
+dataset:
+  basedir: "./data"          # Root directory of KITTI raw data
+  date: "2011_09_26"         # Recording date (YYYY_MM_DD)
+  drive: "0023"              # Drive sequence ID (4-digit string)
+
+# Processing Settings 
+processing:
+  num_frames: 10             # Number of consecutive frames to process
+  max_dist: 50.0             # Max depth in metres (used for colour normalisation)
+  point_radius: 2            # Drawn point radius in pixels (smaller = tighter alignment)
+  ground_filter_z: -1.3      # Z_velo threshold to remove ground returns (metres)
+  ego_filter_radius: 2.0     # XY radius (metres) to remove ego-vehicle reflections
+
+# Output Settings 
+output:
+  output_dir: "./task1_output"   # Directory where overlays and report are saved
+  image_format: "png"            # Output image format: "png" or "jpg"
