@@ -31,14 +31,14 @@ pip install cupy-cuda11x   # optional – enables GPU acceleration
 
 ## Dataset Setup
 1. Dataset Downloads (KITTI Static Sequence 2011_09_26_drive_0023)
-Download from Visuals & Point Clouds:https://s3.eu-central-1.amazonaws.com/avg-kitti/raw_data/2011_09_26_drive_0023/2011_09_26_drive_0023_sync.zip
+   Visuals & Point Clouds:https://s3.eu-central-1.amazonaws.com/avg-kitti/raw_data/2011_09_26_drive_0023/2011_09_26_drive_0023_sync.zip
 
-Navigation Data:https://s3.eu-central-1.amazonaws.com/avg-kitti/raw_data/2011_09_26_drive_0023/2011_09_26_drive_0023_tracklets.zip
+2. Navigation Data:https://s3.eu-central-1.amazonaws.com/avg-kitti/raw_data/2011_09_26_drive_0023/2011_09_26_drive_0023_tracklets.zip
 
-Rig Calibration:https://s3.eu-central-1.amazonaws.com/avg-kitti/raw_data/2011_09_26_calib.zip
+3. Rig Calibration:https://s3.eu-central-1.amazonaws.com/avg-kitti/raw_data/2011_09_26_calib.zip
 
 
-Expected folder structure:
+folder structure:
 ```
 data/
 └── 2011_09_26/
@@ -74,59 +74,59 @@ python Anomaly_detection.py
 
 ---
 
-## Output Files
 
-All outputs go to `task1_output/` (configurable via `output_dir`).
-
-| File | Script | Description |
-|------|--------|-------------|
-| `frame_XXXX_overlay.png` | Task 1 | LiDAR points overlaid on camera image |
-| `validation_report.txt` | Task 1 | Per-frame projection stats |
-| `frame_XXXX_alignment.png` | Task 1A | Boundary alignment visualisation |
-| `alignment_accuracy_report.txt` | Task 1A | p95 error & pass/fail per frame |
-| `frame_XXXX_anomaly.png` | Task 1B | Annotated anomaly detection frame |
-| `anomaly_detection_report.txt` | Task 1B | Detection rate & recovery log |
-
----
 
 ## Projection Pipeline (Task 1)
+## Inputs
 
-```
-Raw LiDAR scan  (N × 4, XYZR)
-        │
-        ▼
- Filter X > 0           ← forward hemisphere only
-        │
-        ▼
- Filter Z > ground_filter_z   ← remove road/ground returns
-        │
-        ▼
- Filter XY > ego_filter_radius ← remove car body reflections
-        │
-        ▼
- Homogeneous coords  →  (N, 4)
-        │
-        ▼
- P_cam = T_cam2_velo · P_velo  ← transform to camera frame
-        │
-        ▼
- Filter Z_cam > 0       ← points in front of camera only
-        │
-        ▼
- p = K_cam2 · P_cam[:3] ← perspective projection
-        │
-        ▼
- (u, v) = (p[0]/p[2], p[1]/p[2])
-        │
-        ▼
- Filter to image bounds
-        │
-        ▼
- Colour by depth (red=near → green → blue=far)
-        │
-        ▼
- Save overlay image + report
-```
+- **Velodyne point cloud** (`N × 4`): `(X, Y, Z, intensity)` in the LiDAR’s own coordinate frame.
+- **Camera image** (left colour camera, “camera 2”).
+- **Calibration files**:
+  - `K_cam2` – intrinsic matrix (3×3) for camera 2.
+  - `T_cam2_velo` – extrinsic matrix (4×4) transforming Velodyne → camera‑2 coordinates.
+
+## Processing Pipeline (per frame)
+
+### 1. Load and prepare
+- Read the camera image and the raw LiDAR scan.
+
+### 2. Filter LiDAR points (before transformation)
+- Keep only points in front of the LiDAR: `X_velo > 0`.
+- Remove ground returns: keep points above a configurable height `Z_velo > GROUND_FILTER_Z`.
+- Remove ego‑vehicle reflections: discard points within a small XY radius `sqrt(X²+Y²) > EGO_FILTER_RADIUS`.
+
+### 3. Coordinate transformation
+- Convert the remaining points to homogeneous coordinates.
+- Multiply by `T_cam2_velo` to obtain points in the camera‑2 frame:  
+  `P_cam = T_cam2_velo · P_velo_hom`.
+
+### 4. Keep points in front of the camera
+- Only retain points where `Z_cam > 0` (positive depth).
+
+### 5. Perspective projection to pixel coordinates
+- Apply the intrinsic matrix: `p = K_cam2 · (X_cam, Y_cam, Z_cam)^T`.
+- Compute pixel coordinates: `(u, v) = (p_x / p_z, p_y / p_z)`.
+
+### 6. Discard points outside the image
+- Reject any `(u, v)` that lies outside `[0, image_width)` or `[0, image_height)`.
+
+### 7. Colour by depth
+- Map each point’s `Z_cam` (depth in metres) to a colour:
+  - **Red** → close (0 m)
+  - **Green** → medium
+  - **Blue** → far (max distance, configurable)
+- The colour map uses HSV to BGR conversion for smooth transitions.
+
+### 8. Render overlay
+- Draw each projected point as a filled circle of configurable radius.
+- Add a frame label and a vertical colour bar legend.
+- Save the resulting image in the desired format (e.g., PNG).
+
+
+
+
+
+
 
 ---
 
@@ -206,7 +206,7 @@ injection:
 <img src="assets/Task-1.png" alt="Description" width="700">
 
 # Task-2 StateEstimation(Odometry)
-# KITTI FAST-LIVO2 Trajectory Drift Pipeline
+
 
 A collection of tools for running FAST-LIVO2 on KITTI bags, fixing point cloud format issues, and analyzing / correcting odometry drift.
 
@@ -300,7 +300,7 @@ For each estimated timestamp, finds the closest ground truth timestamp within a 
 
 Uses a linear scan (both sequences sorted).
 
-Result: 395 anchor pairs (estimate ↔ ground truth).
+Result: 395 anchor pairs (estimate <-> ground truth).
 
 These pairs provide the sparse constraints for correction.
 
@@ -333,7 +333,7 @@ Output the corrected positions and orientations.
 
 This method handles non‑uniform drift (changing scale ratio) automatically, unlike a single Sim(3) alignment.
 
-# Step 5 – Smoothing (optional, smooth_trajectory)
+### Step 5 – Smoothing (optional, smooth_trajectory)
 A Gaussian weighted moving average with window size window=5 (default) is applied to positions.
 
 Quaternions are averaged using the weighted eigenvector method (Markley).
@@ -341,11 +341,28 @@ Quaternions are averaged using the weighted eigenvector method (Markley).
 Reduces high‑frequency noise while preserving the overall shape.
 
 # Results 
+1) Absolute Trajectory Error(ATE)  calculated meters on stable segments
 <img src="assets/Absolute_Trajectory Error(stable-segment).png" alt="Description" width="700">
-
+2)The script reduced overall ATE from 240.5 m to 0.613 m (99.7% improvement) and scale‑invariant RPE% from 97.9% to 14.2% (85.5% improvement).
+  Per‑segment ATE shows the middle stable segment (18.6–26.7 s) achieves 0.035 m (meets <0.15 m target).
 <img src="assets/Reduce_drifts.png" alt="Description" width="700">
+3)isolates drift to within a 2-second window of the failure event
+<img src="assets/drift_window.png" alt="Description" width="700">
+4) Before the implementation  of software patch Absolute Trajectory Error(ATE)
+<img src="assets/raw (pre‑patch) ATE.png" alt="Description" width="700">
+5) After the implementation  of software patch Absolute Trajectory Error(ATE)
+<img src="assets/corrected (post‑patch) ATE mean.png" alt="Description" width="700">
+
+
 
 Usage:
+```bash
+evo_ape tum ground_truth.tum trajectory.tum  \
+    -va \
+    --t_max_diff 1.0 \
+    --plot
+
+```
 ```bash
 python Reduce_drift.py \
     --traj  trajectory.tum \
@@ -356,7 +373,7 @@ python Reduce_drift.py \
     
 ```
 
----
+
 
 ## Typical Workflow
 
@@ -389,3 +406,87 @@ rosparam set use_sim_time true
 ```bash
 roslaunch fast_livo kitti_velodyne.launch
 ```
+
+
+# Task-3 : Novel View Synthesis (3D Gaussian Splatting)
+
+ So the above task was implemented using two paths : converting a trajectory.tum file to transform.json, and using COLMAP's native files.
+
+Path 1: From trajectory.tum to transform.json. This path is useful when we have a trajectory from a custom pipeline (FAST-LIVO2) and want to bypass COLMAP's pose estimation. the `tum_to_nerfstudio.py` that reads the TUM format, builds the necessary transformation matrices, and writes them to a transform.json file. due (odometry drift) creates a  specific visual glitch artifacts in the 3D Gaussian Splatting we will be using path2 for the Reconstruction
+
+Path 2: Using Native COLMAP Files. This is the most integrated approach. we will be using colmap GUI Where we extract the features and reconstruct, and  gives standard COLMAP output (like cameras.txt, images.txt, points3D.txt) and generates a transform.json file. Within this process, colmap2nerf.py handles critical transformations, such as converting COLMAP's world-to-camera pose format to the camera-to-world (c2w) format expected by tools like Instant-NGP, and adjusting for different coordinate systems 
+
+## Files
+
+| File | Purpose |
+|------|---------|
+| `tum_to_nerfstudio.py` | Converts a TUM‑format trajectory from FAST‑LIVO2 into a Nerfstudio transforms.json file with camera poses and intrinsics. |
+| `transforms.json` |  The transforms.json file provides the camera intrinsics and the pose (position and orientation) of each image frame in a format that Nerfstudio uses to train a neural radiance field from the KITTI sequence.|
+
+## Colmap folder structure:
+```
+kitti_3dgs_project/
+├── images/
+└── colmap/
+    └── sparse/
+        └── 0/
+            ├── cameras.bin
+            ├── images.bin
+            └── points3D.bin
+```
+
+
+## Requirements
+Step 1: Set Up a Dedicated Conda Environment
+
+```bash
+conda create --name nerfstudio -y python=3.8
+conda activate nerfstudio
+```
+
+Step 2: Install Core Libraries
+
+```bash
+pip install torch==2.1.2 torchvision==0.16.2 --index-url https://download.pytorch.org/whl/cu118
+```
+
+Step 3: Install Nerfstudio and Dependencies
+```bash
+# Install nerfstudio
+pip install nerfstudio        
+# Install the required backend
+pip install gsplat            
+# Install the nerfstudio CLI tools
+ns-install-cli                
+```
+
+Step 4: Install COLMAP
+```bash
+sudo apt install colmap 
+```
+
+## Train Splatfacto
+```bash
+ns-train splatfacto \
+    --vis viewer \
+    --max-num-iterations 50000 \
+    --pipeline.model.num-downscales 1 \
+    --pipeline.model.cull-alpha-thresh 0.001 \
+    --pipeline.model.densify-grad-thresh 0.0002 \
+    --pipeline.datamanager.cache-images cpu \
+    colmap \
+    --data ~/gaussian-splatting/kitti_3dgs_project
+```
+
+## eval Splatfacto
+```bash
+ns-eval \
+  --load-config outputs/unnamed/splatfacto/2026-06-09_174606/config.yml \
+  --output-path results_174606.json
+```
+
+## Results
+The Fly-Through Video: A 10-second rendered MP4 video showing a smooth camera
+fly-through of your generated 3D scene.
+
+https://drive.google.com/drive/folders/13BDEYxH1l_ngtZLGJpHlGLnzsMXNd__n
