@@ -254,7 +254,7 @@ KITTI bags store intensity in a field named `i`, but FAST-LIVO2 expects `intensi
 - **Time assignment** — relative timestamp within the scan is estimated from the point's azimuth angle (0–360° maps to 0–0.1 s for a 10 Hz scanner).
 - **Auto-detection** — on the first message, it checks whether the bag uses `i` or `intensity` and adapts automatically.
 
-<video src="assets/Task-2_after.mp4" controls width="700"></video>
+
 
 
 
@@ -341,7 +341,7 @@ Quaternions are averaged using the weighted eigenvector method (Markley).
 Reduces high‑frequency noise while preserving the overall shape.
 
 # Results 
-<img src="assets/Absolute_Trajectory.png" alt="Description" width="700">
+<img src="assets/Absolute_Trajectory Error(stable-segment).png" alt="Description" width="700">
 
 <img src="assets/Reduce_drifts.png" alt="Description" width="700">
 
