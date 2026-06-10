@@ -234,6 +234,45 @@ FAST-LIVO2 expects a specific config format. We set it up for the KITTI dataset:
 - **Extrinsic calibration** — filled in the IMU→LiDAR transform from KITTI's `calib_imu_to_velo.txt`, and computed the camera→LiDAR (`Rcl`, `Pcl`) from the rectification matrices.
 - **VIO / LIO tuning** — set patch size, pyramid levels, voxel sizes, and covariance values appropriate for the HDL-64E LiDAR running at 10 Hz.
 - **Output** — enabled pose output and set the sequence name to `KITTI_0023`.
+## Sensor Calibration Parameters
+
+FAST-LIVO2 requires the rigid-body transformation between the IMU and the LiDAR sensor. The calibration parameters were obtained from the KITTI dataset (`calib_imu_to_velo.txt`).
+
+### Translation Vector
+
+The translation from the IMU frame to the LiDAR frame is:
+
+
+which corresponds to:
+
+```yaml
+extrinsic_T: [-0.8086759, 0.3195559, -0.7997231]
+```
+
+### Rotation Matrix
+
+The rotation from the IMU frame to the LiDAR frame is:
+
+
+
+which corresponds to:
+
+```yaml
+extrinsic_R:
+[
+  9.999976e-01,  7.553071e-04, -2.035826e-03,
+ -7.854027e-04,  9.998898e-01, -1.482298e-02,
+  2.024406e-03,  1.482454e-02,  9.998881e-01
+]
+```
+
+### Purpose
+
+These extrinsic parameters define the spatial relationship between the IMU and the LiDAR. During state estimation, FAST-LIVO2 uses this transformation to convert LiDAR measurements into the IMU coordinate frame:
+
+
+
+Accurate extrinsic calibration is critical because errors in the rotation matrix or translation vector directly affect pose estimation accuracy, which can lead to odometry drift and reconstruction artifacts in the final 3D Gaussian Splatting model.
 
 ### 2. Camera Intrinsics (`camera_pinhole.yaml`)
 
@@ -253,6 +292,44 @@ KITTI bags store intensity in a field named `i`, but FAST-LIVO2 expects `intensi
 - **Ring assignment** — each point is matched to one of the HDL-64E's 64 laser beams by comparing its vertical angle to the known beam angles.
 - **Time assignment** — relative timestamp within the scan is estimated from the point's azimuth angle (0–360° maps to 0–0.1 s for a 10 Hz scanner).
 - **Auto-detection** — on the first message, it checks whether the bag uses `i` or `intensity` and adapts automatically.
+## Ring Reconstruction Using HDL-64E Vertical Angles
+
+FAST-LIVO2 expects each LiDAR point to contain a **ring** field that identifies which laser beam generated the measurement. However, the KITTI PointCloud2 messages only provide:
+
+- x
+- y
+- z
+- intensity
+
+and do not contain ring information.
+
+To recover the missing ring index, the fixed vertical beam angles of the Velodyne HDL-64E sensor were used:
+
+```python
+VERT_ANGLES = [
+-24.9, -24.8, -24.0, -23.5, -22.9, -22.4, -21.9, -21.3,
+-20.8, -20.2, -19.7, -19.1, -18.6, -18.0, -17.5, -16.9,
+-16.4, -15.8, -15.3, -14.7, -14.2, -13.6, -13.1, -12.5,
+-12.0, -11.4, -10.9, -10.3, -9.8, -9.2, -8.7, -8.1,
+-7.6, -7.0, -6.5, -5.9, -5.4, -4.8, -4.3, -3.7,
+-3.2, -2.6, -2.1, -1.5, -1.0, -0.4, 0.1, 0.7,
+1.2, 1.8, 2.3, 2.9, 3.4, 4.0, 4.5, 5.1,
+5.6, 6.2, 6.7, 7.3, 7.8, 8.4, 8.9, 9.5
+]
+```
+
+
+The calculated angle was then compared with the HDL-64E angle table, and the nearest match was assigned as the ring number (0–63).
+
+This reconstructed ring information allows FAST-LIVO2 to:
+
+- Organize points by scan line
+- Perform feature extraction
+- Apply motion compensation
+- Improve LiDAR-IMU state estimation
+- Reduce trajectory drift
+
+Without ring information, FAST-LIVO2 cannot correctly identify the originating laser beam for each point, leading to degraded odometry performance and poorer 3D reconstruction quality.
 
 
 
@@ -430,11 +507,12 @@ kitti_3dgs_project/
 └── colmap/
     └── sparse/
         └── 0/
-            ├── cameras.bin
-            ├── images.bin
-            └── points3D.bin
+            ├── cameras.txt
+            ├── images.txt
+            └── points3D.txt
 ```
-
+## Colmap GUI Reconstruction
+<img src="assets/colmap.png" alt="Description" width="700">
 
 ## Requirements
 Step 1: Set Up a Dedicated Conda Environment
@@ -485,8 +563,23 @@ ns-eval \
   --output-path results_174606.json
 ```
 
+
+
 ## Results
+Peak Signal-to-Noise Ratio (PSNR) 19.89 on held-out test frames. 
+<img src="assets/Task-3.png" alt="Description" width="700">
+
 The Fly-Through Video: A 10-second rendered MP4 video showing a smooth camera
 fly-through of your generated 3D scene.
 
 https://drive.google.com/drive/folders/13BDEYxH1l_ngtZLGJpHlGLnzsMXNd__n
+
+## Hardware Configuration
+1)CPU: AMD Ryzen AI Processor
+2)RAM: 16 GB
+3)GPU: NVIDIA GeForce RTX 3050 Laptop GPU (6 GB VRAM)
+4)Integrated Graphics: AMD Radeon Graphics
+5)Storage: NVMe SSD
+6)Operating System: Ubuntu 20.04 (WSL2 on Windows 11)
+
+This hardware was used for COLMAP reconstruction, FAST-LIVO odometry, and 3D Gaussian Splatting training.
