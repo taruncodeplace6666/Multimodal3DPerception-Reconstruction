@@ -570,7 +570,7 @@ Peak Signal-to-Noise Ratio (PSNR) 19.89 on held-out test frames.
 <img src="assets/Task-3.png" alt="Description" width="700">
 
 The Fly-Through Video: A 10-second rendered MP4 video showing a smooth camera
-fly-through of your generated 3D scene.
+fly-through of  generated 3D scene.
 
 https://drive.google.com/drive/folders/13BDEYxH1l_ngtZLGJpHlGLnzsMXNd__n
 
