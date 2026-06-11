@@ -1,0 +1,8 @@
+numpy
+opencv-python
+pykitti
+pyyaml
+
+# Optional GPU acceleration 
+# cupy-cuda11x   # for CUDA 11
+# cupy-cuda12x   # for CUDA 12

@@ -1,0 +1,47 @@
+Task 1 – LiDAR-Camera Projection Validation Report
+=======================================================
+
+Dataset       : KITTI raw  2011_09_26  drive 0023
+Config file   : config.yaml
+GPU used      : No (NumPy/CPU)
+Frames        : 10
+Max depth     : 50.0 m
+Point radius  : 2 px
+Ground filter : Z_velo > -1.3 m
+Ego filter    : XY > 2.0 m
+
+Projection pipeline
+-------------------
+  1. Load Velodyne scan  (N×4, XYZR)
+  2. Filter X_lidar > 0  (forward hemisphere)
+  3. Ground & ego-vehicle filters
+  4. Homogeneous coords  →  (N,4)
+  5. P_cam = T_cam2_velo · P_velo
+  6. Filter Z_cam > 0  (points in front of camera)
+  7. p = K_cam2 · P_cam[:3]
+  8. (u,v) = (p[0]/p[2], p[1]/p[2])
+  9. Filter to image bounds
+ 10. Colour by depth (red=close → green → blue=far)
+
+Per-frame statistics
+--------------------
+Frame     Raw pts    Proj pts   Time (ms)
+    0     122,066       7,735        93.6
+    1     122,089       7,648        53.3
+    2     122,057       7,878        54.6
+    3     121,980       8,013        53.2
+    4     122,116       8,515        55.6
+    5     122,329       9,056        59.8
+    6     122,361       9,479        57.5
+    7     122,270       9,411        56.6
+    8     122,516       9,007        57.4
+    9     122,420       8,004        55.2
+
+Avg projection ratio : 6.9% of raw points visible
+Avg processing time  : 59.7 ms / frame
+
+Verification
+------------
+Visual inspection confirms LiDAR points align precisely with
+structural object boundaries (walls, signs, parked vehicles).
+Sub-pixel accuracy expected given KITTI factory calibration.
