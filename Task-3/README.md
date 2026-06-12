@@ -1,179 +1,3 @@
-# Task 1 – LiDAR-to-Camera Projection
-
-## Overview
-Projects 3D Velodyne LiDAR points onto 2D camera images using KITTI raw
-dataset calibration matrices. Outputs colour-coded depth overlays and a
-validation report.
-
----
-
-## Files
-
-| File | Purpose |
-|------|---------|
-| `Spatial_projection.py` | Main projection script |
-| `Alignment_validator.py` | Alignment accuracy validator (rubric: ≤ 3 px error) |
-| `Anomaly_detection.py` | Anomaly detection & auto calibration recovery |
-| `config.yaml` | Config for `Spatial_projection.py` |
-| `config_validator.yaml` | Config for `Alignment_validator` |
-| `config_anomaly.yaml` | Config for `Anomaly_detection.py` |
-
----
-
-## create environment
-
-```bash
-python -m venv Kitti_env
-```
-
-```bash
-kitti_env\Scripts\activate
-```
-
-
-
-## Requirements
-
-```bash
-pip install -r requirements.txt
-```
-
----
-
-
-
-Expected folder structure:
-```
-data/
-└── 2011_09_26/
-    ├── calib_cam_to_cam.txt
-    ├── calib_velo_to_cam.txt
-    ├── calib_imu_to_velo.txt
-    └── 2011_09_26_drive_0023_sync/
-        ├── image_02/data/          
-        └── velodyne_points/data/   
-```
-
----
-
-## How to Run
-
-### Task 1 – Projection
-```bash
-python Spatial_projection.py
-
-```
-
-### Task 1A – Alignment Validator
-```bash
-python Alignment_validator.py
-
-```
-
-### Task 1B – Anomaly Detector
-```bash
-python Anomaly_detection.py
-
-```
-
----
-
-## Dependencies
-Visual studio installed
-
-
-
-
-# Task-2 StateEstimation(Odometry)
-# KITTI FAST-LIVO2 Trajectory Drift Pipeline
-
-A collection of tools for running FAST-LIVO2 on KITTI bags, fixing point cloud format issues, and analyzing / correcting odometry drift.
-
-
-
-
-
-## How to Run Task-2
-
-###  Terminal-1
-```bash
-roscore
-
-```
-
-### Terminal-2
-```bash
-cd ~/catkin_ws
-catkin_make 
-source devel/setup.bash
-rosparam set use_sim_time true
-roslaunch fast_livo kitti_velodyne.launch
-
-```
-
-### Terminal-3
-```bash
-rosparam set use_sim_time true
-rosbag play ~/kitti_2011_09_26_drive_0023_synced.bag --clock
-
-```
-
-### Terminal-4
-```bash
-rostopic echo -p /aft_mapped_to_init > trajectory.csv
-
-```
----
-
-
-
-Usage:
-```bash
-python Reduce_drift.py \
-    --traj  trajectory.tum \
-    --gt    ground_truth.tum \
-    --out   corrected.tum \
-    --max_speed 3.0 \
-    --smooth 5 \
-    
-```
-
-```bash
-python find_drift_window.py
-#disclaimer you should specifiy the groundtruth.tum and trajectory.tum in the script
-    
-```
-
-```bash
-evo_ape tun ground_truth.tum trajectory.tum --align --correct_scale 
-
-```
-
-```bash
-python3 convert.py trajectory.csv
-```
-
----
-
-## Typical Workflow
-
-```
-1. Launch FAST-LIVO2 with kitti_velodyne.yaml
-2. Play KITTI bag → kitti_cloud_fixer.py fixes the point cloud on-the-fly
-3. Record the output trajectory as trajectory.tum or trajectory.csv
-4. Run find_drift_window.py to see where drift is worst
-5. Run Reduce_drift.py to generate corrected.tum
-```
-
----
-
-## Dependencies
-
-- Python 3.8+: `numpy`, `scipy`, `pandas`
-- ROS (Noetic )
-- FAST-LIVO2 
-- Ubuntu-20.04
-
 
 # Task-3 Novel View Synthesis (3D Gaussian Splatting)
 So the above task was implemented using two approachs : converting a trajectory.tum file to transform.json, and using COLMAP's native files. so we create a two directory
@@ -223,6 +47,9 @@ Step 4: Install COLMAP
 sudo apt install colmap 
 ```
 
+```bash
+python3 tum_to_nerfstudio.py #to convert trajectory.csv to transform.json
+```
 ## Train Splatfacto
 ```bash
 ns-train splatfacto \
@@ -242,6 +69,24 @@ ns-eval \
   --load-config outputs/unnamed/splatfacto/2026-06-09_174606/config.yml \
   --output-path results_174606.json
 ```
+
+
+## Results
+Peak Signal-to-Noise Ratio (PSNR) 19.89 on held-out test frames. 
+<img src="assets/Task-3.png" alt="Description" width="700">
+
+The Fly-Through Video: A 10-second rendered MP4 video showing a smooth camera
+fly-through of  generated 3D scene.
+
+https://drive.google.com/drive/folders/13BDEYxH1l_ngtZLGJpHlGLnzsMXNd__n
+
+## Hardware Configuration
+1)CPU: AMD Ryzen AI Processor
+2)RAM: 16 GB
+3)GPU: NVIDIA GeForce RTX 3050 Laptop GPU (6 GB VRAM)
+4)Integrated Graphics: AMD Radeon Graphics
+5)Storage: NVMe SSD
+6)Operating System: Ubuntu 20.04 (WSL2 on Windows 11)
 
 
 
