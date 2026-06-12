@@ -494,9 +494,9 @@ roslaunch fast_livo kitti_velodyne.launch
 
  So the above task was implemented using two paths : converting a trajectory.tum file to transform.json, and using COLMAP's native files.
 
-Path 1: From trajectory.tum to transform.json. This path is useful when we have a trajectory from a custom pipeline (FAST-LIVO2) and want to bypass COLMAP's pose estimation. the `tum_to_nerfstudio.py` that reads the TUM format, builds the necessary transformation matrices, and writes them to a transform.json file. due (odometry drift) creates a  specific visual glitch artifacts in the 3D Gaussian Splatting we will be using path2 for the Reconstruction
+approach 1: From trajectory.tum to transform.json. This path is useful when we have a trajectory from a custom pipeline (FAST-LIVO2) and want to bypass COLMAP's pose estimation. the `tum_to_nerfstudio.py` that reads the TUM format, builds the necessary transformation matrices, and writes them to a transform.json file. due (odometry drift) creates a  specific visual glitch artifacts in the 3D Gaussian Splatting we will be using path2 for the Reconstruction
 
-Path 2: Using Native COLMAP Files. This is the most integrated approach. we will be using colmap GUI Where we extract the features and reconstruct, and  gives standard COLMAP output (like cameras.txt, images.txt, points3D.txt) and generates a transform.json file. Within this process, colmap2nerf.py handles critical transformations, such as converting COLMAP's world-to-camera pose format to the camera-to-world (c2w) format expected by tools like Instant-NGP, and adjusting for different coordinate systems 
+approach 2: Using Native COLMAP Files. This is the most integrated approach. we will be using colmap GUI Where we extract the features and reconstruct, and  gives standard COLMAP output (like cameras.txt, images.txt, points3D.txt) and generates a transform.json file. Within this process, colmap2nerf.py handles critical transformations, such as converting COLMAP's world-to-camera pose format to the camera-to-world (c2w) format expected by tools like Instant-NGP, and adjusting for different coordinate systems 
 
 ## Files
 
